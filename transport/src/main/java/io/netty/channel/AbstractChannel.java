@@ -82,7 +82,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      */
     protected AbstractChannel(Channel parent) {
         this.parent = parent;
+        // 设置unsafe
         unsafe = newUnsafe();
+        // 为 Channel设置pipeline
         pipeline = newChannelPipeline();
     }
 
@@ -417,11 +419,19 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             AbstractChannel.this.eventLoop = eventLoop;
-
+            /**
+             * 判断当前执行线程是不是在 eventLoop中
+             */
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
                 try {
+                    /**
+                     * 如果不是在NioEventLoop中，
+                     * 开启 NioEventLoop 线程，boss 线程组初始化后，线程并未开启，在此处进行开启，开启后将channel的注册放到 任务队列中
+                     * 调用 {@link io.netty.util.concurrent.SingleThreadEventExecutor#execute(Runnable)}
+                     * 将 任务 Runnable 加入NioEventLoop的任务队列中
+                     */
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
@@ -439,6 +449,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        /**
+         * 注册channel
+         * @param promise
+         */
         private void register0(ChannelPromise promise) {
             try {
                 // check if the channel is still open as it could be closed in the mean time when the register
@@ -446,26 +460,39 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 if (!promise.setUncancellable() || !ensureOpen(promise)) {
                     return;
                 }
+                // 标记第一次注册
                 boolean firstRegistration = neverRegistered;
                 doRegister();
+                // 标记为已经注册
                 neverRegistered = false;
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
+                /**
+                 * 回调 pipeline 中 handlerAdded,在channel的 registered 为false时，此channel添加handler时
+                 * handlerAdded 会以PendingHandlerCallback 链表存在
+                 */
                 pipeline.invokeHandlerAddedIfNeeded();
 
                 safeSetSuccess(promise);
+                // pipeline 传播 channel Registered事件
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
+                /**
+                 * 判断channel是否被激活了，
+                 * 如果被激活，
+                 *      且是第一次注册，那么就在pipeline中传播channelActive事件
+                 *
+                 */
                 if (isActive()) {
                     if (firstRegistration) {
                         pipeline.fireChannelActive();
                     } else if (config().isAutoRead()) {
                         // This channel was registered before and autoRead() is set. This means we need to begin read
                         // again so that we process inbound data.
-                        //
+                        //如果channel已经被注册过了，且设置了自动读，就会调用此方法
                         // See https://github.com/netty/netty/issues/4805
                         beginRead();
                     }
@@ -498,16 +525,19 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         "is not bound to a wildcard address; binding to a non-wildcard " +
                         "address (" + localAddress + ") anyway as requested.");
             }
-
+            // 记录此时是否被激活
             boolean wasActive = isActive();
             try {
+                // 调用jdk底层绑定端口
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
                 closeIfClosed();
                 return;
             }
-
+            /**
+             * 如果在执行 doBind()之前 未激活，现在激活了，就在pipeline中异步传播channelActive事件
+             */
             if (!wasActive && isActive()) {
                 invokeLater(new Runnable() {
                     @Override
@@ -784,7 +814,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         @Override
         public final void beginRead() {
             assertEventLoop();
-
+            /**
+             * 校验如果未被激活，就返回
+             */
             if (!isActive()) {
                 return;
             }

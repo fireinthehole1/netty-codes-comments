@@ -78,6 +78,14 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
 
     private volatile int handlerState = INIT;
 
+    /**
+     * 初始化 handlerContext
+     * @param pipeline
+     * @param executor
+     * @param name
+     * @param inbound
+     * @param outbound
+     */
     AbstractChannelHandlerContext(DefaultChannelPipeline pipeline, EventExecutor executor, String name,
                                   boolean inbound, boolean outbound) {
         this.name = ObjectUtil.checkNotNull(name, "name");

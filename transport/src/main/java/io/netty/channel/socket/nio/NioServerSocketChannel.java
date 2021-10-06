@@ -15,6 +15,7 @@
  */
 package io.netty.channel.socket.nio;
 
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.channel.ChannelException;
 import io.netty.channel.ChannelMetadata;
 import io.netty.channel.ChannelOutboundBuffer;
@@ -67,8 +68,10 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     /**
      * Create a new instance
+     * {@link  AbstractBootstrap.BootstrapChannelFactory#newChannel()} 反射调用
      */
     public NioServerSocketChannel() {
+        // 初始化 ServerSocketChannel
         this(newSocket(DEFAULT_SELECTOR_PROVIDER));
     }
 
@@ -83,7 +86,9 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
      * Create a new instance using the given {@link ServerSocketChannel}.
      */
     public NioServerSocketChannel(ServerSocketChannel channel) {
+        // 设置此channel感兴趣的事件为 OP_ACCEPT
         super(null, channel, SelectionKey.OP_ACCEPT);
+        // 创建nio socket ,初始化 NioServerSocketChannelConfig
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
     }
 
@@ -124,6 +129,9 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     @Override
     protected void doBind(SocketAddress localAddress) throws Exception {
+        /**
+         * 调用jdk底层执行绑定
+         */
         if (PlatformDependent.javaVersion() >= 7) {
             javaChannel().bind(localAddress, config.getBacklog());
         } else {

@@ -121,13 +121,18 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
         this.parent = parent;
         this.addTaskWakesUp = addTaskWakesUp;
-
+        /**
+         * 创建线程，但此时还未启动线程
+         */
         thread = threadFactory.newThread(new Runnable() {
             @Override
             public void run() {
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    /**
+                     * {@link NioEventLoop#run()}
+                     */
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {
@@ -175,6 +180,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         });
         threadProperties = new DefaultThreadProperties(thread);
         this.maxPendingTasks = Math.max(16, maxPendingTasks);
+        // 初始化任务队列：阻塞队列 LinkedBlockingQueue
         taskQueue = newTaskQueue();
         rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
     }
@@ -326,6 +332,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (task == null) {
             throw new NullPointerException("task");
         }
+        /**
+         * 如果添加队列失败,则拒绝任务
+         */
         if (!offerTask(task)) {
             rejectedExecutionHandler.rejected(task, this);
         }
@@ -732,10 +741,16 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         boolean inEventLoop = inEventLoop();
+        // 判断是否在本线程中
         if (inEventLoop) {
+            // 如果在，直接往线程的等待队列中添加任务
             addTask(task);
         } else {
+            /**
+             * {@link io.netty.channel.nio.NioEventLoop#run()}
+             */
             startThread();
+            // 将任务放入阻塞队列中
             addTask(task);
             if (isShutdown() && removeTask(task)) {
                 reject();

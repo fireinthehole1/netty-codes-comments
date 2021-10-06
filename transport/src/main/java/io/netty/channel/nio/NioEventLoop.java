@@ -399,6 +399,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         logger.info("Migrated " + nChannels + " channel(s) to the new Selector.");
     }
 
+    /**
+     *
+     */
     @Override
     protected void run() {
         for (;;) {

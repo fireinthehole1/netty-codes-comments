@@ -55,11 +55,15 @@ public final class EchoServer {
         // 开启worker线程组 ，用于处理IO事件的读写
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
+            // 服务端的配置都保存在 AbstractBootstrap
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
+                    // 设置服务端channel NioServerSocketChannel
              .channel(NioServerSocketChannel.class)
              .option(ChannelOption.SO_BACKLOG, 100)
+                    // NioServerSocketChannel的handler
              .handler(new LoggingHandler(LogLevel.INFO))
+                    // 往NioSocketChannel中的pipeline中添加handler，此handler在channel初始化的时候会被调用
              .childHandler(new ChannelInitializer<SocketChannel>() {
                  @Override
                  public void initChannel(SocketChannel ch) throws java.lang.Exception {
@@ -73,6 +77,7 @@ public final class EchoServer {
              });
 
             // Start the server.
+            // 绑定端口，开启服务
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.

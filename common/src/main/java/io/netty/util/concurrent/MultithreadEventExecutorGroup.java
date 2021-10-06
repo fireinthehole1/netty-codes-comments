@@ -53,17 +53,23 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
              */
             threadFactory = newDefaultThreadFactory();
         }
-
+        // 初始化线程池数组
         children = new SingleThreadEventExecutor[nThreads];
+
+        // 判断线程池长度是否是2的次幂
+        // 最终的结果都是轮询获取线程
         if (isPowerOfTwo(children.length)) {
+            // 使用优化后的选择器  &运算的效率高于取余
             chooser = new PowerOfTwoEventExecutorChooser();
         } else {
+            // 通过取余，获取具体的线程
             chooser = new GenericEventExecutorChooser();
         }
 
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
+                // 初始化线程 NioEventLoop
                 children[i] = newChild(threadFactory, args);
                 success = true;
             } catch (Exception e) {

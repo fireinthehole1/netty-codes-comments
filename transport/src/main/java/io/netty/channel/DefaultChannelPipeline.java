@@ -85,10 +85,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     protected DefaultChannelPipeline(Channel channel) {
         this.channel = ObjectUtil.checkNotNull(channel, "channel");
-
+        // 设置pipeline 头节点和尾节点
+        // tail节点是一个inbound handler
         tail = new TailContext(this);
+        // head节点是一个inbound outbound handler
         head = new HeadContext(this);
-
+        // 双向队列
         head.next = tail;
         tail.prev = head;
     }
@@ -194,29 +196,34 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
             checkMultiplicity(handler);
-
+            //封装 ChannelHandlerContext
             newCtx = newContext(group, filterName(name, handler), handler);
-
+            // 添加到pipeline中
             addLast0(newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventloop yet.
             // In this case we add the context to the pipeline and add a task that will call
             // ChannelHandler.handlerAdded(...) once the channel is registered.
+            // 如果整个NioServerSocketChannel还未注册到NioEventLoop中，那么将当前handler标记为addPending
             if (!registered) {
                 newCtx.setAddPending();
+                // 利用 PendingHandlerCallback 保存还未回调的事件，等待channel注册到NioEventLoop中，会回调所有的pending
                 callHandlerCallbackLater(newCtx, true);
+                // 返回，不再往下执行
                 return this;
             }
 
             EventExecutor executor = newCtx.executor();
             if (!executor.inEventLoop()) {
                 newCtx.setAddPending();
+                // 加入到nioEventLoop的任务队列中
                 executor.execute(new Runnable() {
                     @Override
                     public void run() {
                         callHandlerAdded0(newCtx);
                     }
                 });
+                // 返回不再往下执行
                 return this;
             }
         }
@@ -225,6 +232,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     }
 
     private void addLast0(AbstractChannelHandlerContext newCtx) {
+        // 获取到tail的前一个节点pre，将当前节点插入到 pre和tail之间
         AbstractChannelHandlerContext prev = tail.prev;
         newCtx.prev = prev;
         newCtx.next = tail;
@@ -283,6 +291,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         ctx.prev = newCtx;
     }
 
+    /**
+     * 设置handler的名称
+     * @param name
+     * @param handler
+     * @return
+     */
     private String filterName(String name, ChannelHandler handler) {
         if (name == null) {
             return generateName(handler);
@@ -1141,6 +1155,10 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     }
 
     // A special catch-all handler that handles both bytes and messages.
+
+    /**
+     * 是一个inbound handler
+     */
     final class TailContext extends AbstractChannelHandlerContext implements ChannelInboundHandler {
 
         TailContext(DefaultChannelPipeline pipeline) {
@@ -1195,6 +1213,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         public void channelReadComplete(ChannelHandlerContext ctx) throws Exception { }
     }
 
+    /**
+     * 是一个 inbound 和 outbound handler
+     */
     final class HeadContext extends AbstractChannelHandlerContext
             implements ChannelOutboundHandler, ChannelInboundHandler {
 

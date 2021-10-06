@@ -107,7 +107,7 @@ public class DefaultThreadFactory implements ThreadFactory {
             throw new IllegalArgumentException(
                     "priority: " + priority + " (expected: Thread.MIN_PRIORITY <= priority <= Thread.MAX_PRIORITY)");
         }
-        // 线程命名的前缀 如 nioEventLoopGroup-1-
+        // 线程命名的前缀 如 nioEventLoopGroup-1-   或  nioEventLoopGroup-2-
         prefix = poolName + '-' + poolId.incrementAndGet() + '-';
         this.daemon = daemon;
         this.priority = priority;
@@ -127,7 +127,7 @@ public class DefaultThreadFactory implements ThreadFactory {
     @Override
     public Thread newThread(Runnable r) {
         /**
-         * 返回 重写了 ThreadLocal的 thread
+         * 返回 重写了 ThreadLocal的 thread  , 线程的名称的格式为 nioEventLoop-1-1 ，第一个1 为线程池数量 第二个 1为本线程池里创建线程的序号（个数）
          */
         Thread t = newThread(FastThreadLocalRunnable.wrap(r), prefix + nextId.incrementAndGet());
         try {
