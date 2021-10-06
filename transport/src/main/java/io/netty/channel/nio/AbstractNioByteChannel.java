@@ -49,6 +49,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
      * @param ch                the underlying {@link SelectableChannel} on which it operates
      */
     protected AbstractNioByteChannel(Channel parent, SelectableChannel ch) {
+        /**
+         * 设置感兴趣的事件为 OP_READ
+         */
         super(parent, ch, SelectionKey.OP_READ);
     }
 

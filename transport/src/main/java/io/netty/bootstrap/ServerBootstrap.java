@@ -264,6 +264,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
          * 新连接接入时，会将新连接分发到workGroup
          */
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            // 此channel是NioSocketChannel
             final Channel child = (Channel) msg;
             // 将设置的childHandler添加到 NioSocketChannel 的pipeline中
             child.pipeline().addLast(childHandler);

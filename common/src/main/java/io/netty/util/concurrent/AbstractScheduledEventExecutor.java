@@ -28,6 +28,9 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class AbstractScheduledEventExecutor extends AbstractEventExecutor {
 
+    /**
+     * 优先队列，以定时
+     */
     Queue<ScheduledFutureTask<?>> scheduledTaskQueue;
 
     protected static long nanoTime() {

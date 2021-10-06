@@ -180,7 +180,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         });
         threadProperties = new DefaultThreadProperties(thread);
         this.maxPendingTasks = Math.max(16, maxPendingTasks);
-        // 初始化任务队列：阻塞队列 LinkedBlockingQueue
+        // 初始化任务队列：阻塞队列  MpscQueue
         taskQueue = newTaskQueue();
         rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
     }
@@ -200,6 +200,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * implementation that does not support blocking operations at all.
      */
     protected Queue<Runnable> newTaskQueue(int maxPendingTasks) {
+        // 父类实现为LinkedBlockingQueue ,子类实现为MPSCQueue
         return new LinkedBlockingQueue<Runnable>(maxPendingTasks);
     }
 
@@ -284,6 +285,10 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
     }
 
+    /**
+     * 从定时任务队列中将任务 添加到 mpscQueue中
+     * @return
+     */
     private boolean fetchFromScheduledTaskQueue() {
         long nanoTime = AbstractScheduledEventExecutor.nanoTime();
         Runnable scheduledTask  = pollScheduledTask(nanoTime);
@@ -365,7 +370,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     protected boolean runAllTasks() {
         boolean fetchedAll;
         do {
+            // 将定时任务队列中的所有任务都放到  mpscQueue 中，如果全部都加入了返回true
             fetchedAll = fetchFromScheduledTaskQueue();
+            // 从队列中获取任务
             Runnable task = pollTask();
             if (task == null) {
                 return false;
@@ -383,8 +390,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                     break;
                 }
             }
+            // 如果刚才定时任务队列中还有任务，就再次将定时任务队列中的任务 添加到 mpscQueue中
         } while (!fetchedAll); // keep on processing until we fetched all scheduled tasks.
-
+        // 标记最后执行事件
         lastExecutionTime = ScheduledFutureTask.nanoTime();
         return true;
     }
@@ -437,10 +445,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      */
     protected long delayNanos(long currentTimeNanos) {
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
+        // 如果定时任务队列中任务为空，则返回1s
         if (scheduledTask == null) {
             return SCHEDULE_PURGE_INTERVAL;
         }
-
+        //
         return scheduledTask.delayNanos(currentTimeNanos);
     }
 

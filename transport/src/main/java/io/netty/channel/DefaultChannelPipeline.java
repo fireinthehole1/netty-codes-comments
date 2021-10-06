@@ -932,6 +932,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     @Override
     public final ChannelPipeline fireChannelRead(Object msg) {
+        // 从pipeline的head节点 开始 传播 read事件
         AbstractChannelHandlerContext.invokeChannelRead(head, msg);
         return this;
     }
@@ -1322,6 +1323,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            /**
+             * headContext 直接传播 不做处理
+             */
             ctx.fireChannelRead(msg);
         }
 

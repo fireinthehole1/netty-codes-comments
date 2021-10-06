@@ -79,7 +79,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                         if (!config.isAutoRead()) {
                             break;
                         }
-
+                        // 一次性最多读16次
                         if (readBuf.size() >= maxMessagesPerRead) {
                             break;
                         }
@@ -92,8 +92,9 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 for (int i = 0; i < size; i ++) {
                     pipeline.fireChannelRead(readBuf.get(i));
                 }
-
+                // 读之后将此readBuf清除
                 readBuf.clear();
+                // 传播读取完成事件
                 pipeline.fireChannelReadComplete();
 
                 if (exception != null) {
